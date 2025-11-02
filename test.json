@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "name": "Test",
+  "description": "No description provided",
+  "guid": "a0a7d561787fbdc3c2037ee78316200b",
+  "tag_fg_color": "#ffffff",
+  "tag_bg_color": "#5bc0de",
+  "icon": "adjust",
+  "exported_at": "2025-11-02T18:15:00Z",
+  "agents": [
+    {
+      "type": "Agents::BufferAgent",
+      "name": "dssf",
+      "disabled": false,
+      "guid": "313ecc2ef5d486c5a93184e4bd42a062",
+      "options": {
+        "produces_unsafe_messages": true,
+        "accept_unsafe_messages": "reject",
+        "expected_receive_period_in_days": "10",
+        "max_messages": "100",
+        "keep": "newest",
+        "max_emitted_messages": ""
+      },
+      "schedule": "every_12h",
+      "keep_messages_for": 0
+    }
+  ],
+  "links": [],
+  "control_links": []
+}
