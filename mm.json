@@ -1,0 +1,532 @@
+{
+  "schema_version": 1,
+  "name": "MM01 - Shopify Bilder aktualisieren",
+  "description": "Automatisch die zugehörigen Canva-Designs updaten und in Shopfiy hochladen",
+  "guid": "d3a1fd30c1b40cba921fd79915335d6d",
+  "tag_fg_color": "#ffffff",
+  "tag_bg_color": "#973f94",
+  "icon": "file-export",
+  "exported_at": "2025-11-16T04:01:37Z",
+  "agents": [
+    {
+      "type": "Agents::JavaScriptAgent",
+      "name": "Generate PKCE",
+      "disabled": true,
+      "guid": "036718f332b5ed36160f27c975014b58",
+      "options": {
+        "produces_unsafe_messages": true,
+        "accept_unsafe_messages": "reject",
+        "code": "// === Helpers: base64url, UTF-8, SHA-256 (pure JS), Verifier ===\n(function () {\n  var B64 = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/\";\n  function base64FromBytes(bytes) {\n    var out = \"\", i = 0, len = bytes.length;\n    for (; i + 2 < len; i += 3) {\n      var n = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];\n      out += B64[(n >>> 18) & 63] + B64[(n >>> 12) & 63] + B64[(n >>> 6) & 63] + B64[n & 63];\n    }\n    if (i < len) {\n      var n2 = bytes[i] << 16;\n      var c3 = \"=\";\n      if (i + 1 < len) { n2 |= bytes[i + 1] << 8; c3 = B64[(n2 >>> 6) & 63]; }\n      out += B64[(n2 >>> 18) & 63] + B64[(n2 >>> 12) & 63] + c3 + \"=\";\n    }\n    return out;\n  }\n  function base64url(bytes) {\n    return base64FromBytes(bytes).replace(/\\+/g, \"-\").replace(/\\//g, \"_\").replace(/=+$/, \"\");\n  }\n  function utf8Bytes(str) {\n    var out = [], i = 0, c;\n    for (; i < str.length; i++) {\n      c = str.charCodeAt(i);\n      if (c < 0x80) out.push(c);\n      else if (c < 0x800) out.push(0xC0 | (c >> 6), 0x80 | (c & 63));\n      else if (c >= 0xD800 && c <= 0xDBFF) {\n        var c2 = str.charCodeAt(++i);\n        var code = 0x10000 + ((c - 0xD800) << 10) + (c2 - 0xDC00);\n        out.push(0xF0 | (code >> 18), 0x80 | ((code >> 12) & 63), 0x80 | ((code >> 6) & 63), 0x80 | (code & 63));\n      } else out.push(0xE0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));\n    }\n    return out;\n  }\n  // Minimal SHA-256 (FIPS 180-4), returns byte[]\n  function sha256(bytes) {\n    var K = [\n      0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,\n      0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,\n      0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,\n      0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,\n      0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,\n      0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,\n      0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,\n      0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2\n    ];\n    function R(x, n){ return (x >>> n) | (x << (32 - n)); }\n    function Ch(x, y, z){ return (x & y) ^ (~x & z); }\n    function Maj(x, y, z){ return (x & y) ^ (x & z) ^ (y & z); }\n    function Σ0(x){ return R(x, 2) ^ R(x, 13) ^ R(x, 22); }\n    function Σ1(x){ return R(x, 6) ^ R(x, 11) ^ R(x, 25); }\n    function σ0(x){ return R(x, 7) ^ R(x, 18) ^ (x >>> 3); }\n    function σ1(x){ return R(x, 17) ^ R(x, 19) ^ (x >>> 10); }\n\n    var l = bytes.length, bitLenHi = Math.floor((l * 8) / 0x100000000), bitLenLo = (l * 8) >>> 0;\n    // Padding\n    var withOne = l + 1;\n    var padLen = (withOne % 64 <= 56 ? 56 : 120) - (withOne % 64);\n    var padded = bytes.slice(0);\n    padded.push(0x80);\n    for (var i = 0; i < padLen; i++) padded.push(0);\n    // length (64-bit big-endian)\n    padded.push((bitLenHi >>> 24) & 255, (bitLenHi >>> 16) & 255, (bitLenHi >>> 8) & 255, bitLenHi & 255);\n    padded.push((bitLenLo >>> 24) & 255, (bitLenLo >>> 16) & 255, (bitLenLo >>> 8) & 255, bitLenLo & 255);\n\n    var H0 = 0x6a09e667, H1 = 0xbb67ae85, H2 = 0x3c6ef372, H3 = 0xa54ff53a,\n        H4 = 0x510e527f, H5 = 0x9b05688c, H6 = 0x1f83d9ab, H7 = 0x5be0cd19;\n\n    var w = new Array(64);\n    for (var j = 0; j < padded.length; j += 64) {\n      for (var t = 0; t < 16; t++) {\n        var off = j + t * 4;\n        w[t] = (padded[off] << 24) | (padded[off + 1] << 16) | (padded[off + 2] << 8) | (padded[off + 3]);\n      }\n      for (t = 16; t < 64; t++) w[t] = (((σ1(w[t-2]) + w[t-7]) >>> 0) + ((σ0(w[t-15]) + w[t-16]) >>> 0)) >>> 0;\n\n      var a = H0, b = H1, c = H2, d = H3, e = H4, f = H5, g = H6, h = H7;\n      for (t = 0; t < 64; t++) {\n        var T1 = (h + Σ1(e) + Ch(e, f, g) + K[t] + w[t]) >>> 0;\n        var T2 = (Σ0(a) + Maj(a, b, c)) >>> 0;\n        h = g; g = f; f = e; e = (d + T1) >>> 0;\n        d = c; c = b; b = a; a = (T1 + T2) >>> 0;\n      }\n      H0 = (H0 + a) >>> 0; H1 = (H1 + b) >>> 0; H2 = (H2 + c) >>> 0; H3 = (H3 + d) >>> 0;\n      H4 = (H4 + e) >>> 0; H5 = (H5 + f) >>> 0; H6 = (H6 + g) >>> 0; H7 = (H7 + h) >>> 0;\n    }\n    return [\n      H0>>>24,(H0>>>16)&255,(H0>>>8)&255,H0&255,\n      H1>>>24,(H1>>>16)&255,(H1>>>8)&255,H1&255,\n      H2>>>24,(H2>>>16)&255,(H2>>>8)&255,H2&255,\n      H3>>>24,(H3>>>16)&255,(H3>>>8)&255,H3&255,\n      H4>>>24,(H4>>>16)&255,(H4>>>8)&255,H4&255,\n      H5>>>24,(H5>>>16)&255,(H5>>>8)&255,H5&255,\n      H6>>>24,(H6>>>16)&255,(H6>>>8)&255,H6&255,\n      H7>>>24,(H7>>>16)&255,(H7>>>8)&255,H7&255\n    ];\n  }\n  function randomVerifier(len) {\n    var chars = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~\";\n    var out = \"\";\n    for (var i = 0; i < len; i++) out += chars[(Math.random() * chars.length) | 0];\n    return out;\n  }\n  function makePkcePair(len) {\n    var code_verifier = randomVerifier(len || 64); // 43–128 empfohlen\n    var hashBytes = sha256(utf8Bytes(code_verifier));\n    var code_challenge = base64url(hashBytes);\n    return { code_verifier: code_verifier, code_challenge: code_challenge, code_challenge_method: \"s256\" };\n  }\n\n  // === Agent Hooks ===\n  Agent.check = function () {\n    var pair = makePkcePair(64);\n    this.memory('pkce', { pair: pair, created_at: new Date().toISOString(), from: 'check' });\n    this.createMessage({ pkce: pair, source: 'check' });\n  };\n\n  Agent.receive = function () {\n    var msg = this.incomingMessage();\n    var pair = makePkcePair(64);\n    this.memory('pkce', { pair: pair, created_at: new Date().toISOString(), from: 'receive', last_msg: msg && msg.payload });\n    this.createMessage({ pkce: pair, source: 'receive' });\n  };\n})();\n",
+        "expected_receive_period_in_days": "2",
+        "expected_update_period_in_days": "2"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::CredentialsAgent",
+      "name": "Store auth token",
+      "disabled": false,
+      "guid": "042dd01804b9572075b0c0009a639b3c",
+      "options": {
+        "produces_unsafe_messages": true,
+        "accept_unsafe_messages": "accept",
+        "credential_name": "canva_token",
+        "value_path": "credentials.access_token"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::PostAgent",
+      "name": "Delete previous image",
+      "disabled": false,
+      "guid": "25399d57df2cfe3c915aa87533764bbe",
+      "options": {
+        "post_url": "https://monimalene.myshopify.com/admin/api/2025-07/products/{{ product_numeric_id }}/images/{{ images.images[1].id }}.json",
+        "method": "delete",
+        "headers": {
+          "X-Shopify-Access-Token": "{% credential shopify_api_key %}",
+          "Accept": "application/json"
+        },
+        "emit_messages": "true",
+        "emit_on_error": "true",
+        "no_merge": "true",
+        "output_mode": "merge",
+        "produces_unsafe_messages": true,
+        "accept_unsafe_messages": "reject"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::PostAgent",
+      "name": "Create export job",
+      "disabled": false,
+      "guid": "2b957bc20a24a1bbb167b2dc35fc1a07",
+      "options": {
+        "post_url": "https://api.canva.com/rest/v1/exports",
+        "method": "post",
+        "content_type": "json",
+        "payload": {
+          "design_id": "{{design.items[0].id}}",
+          "format": {
+            "type": "png",
+            "width": 2048,
+            "transparent_background": false,
+            "export_quality": "regular",
+            "pages": [
+              1
+            ]
+          }
+        },
+        "headers": {
+          "Authorization": "Bearer {% credential canva_token %}",
+          "Accept": "application/json"
+        },
+        "emit_messages": "true",
+        "emit_on_error": "true",
+        "no_merge": "false",
+        "output_mode": "merge",
+        "produces_unsafe_messages": false,
+        "accept_unsafe_messages": "accept"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::JavaScriptAgent",
+      "name": "filter for exact title",
+      "disabled": false,
+      "guid": "34d682c2fd007aea9b8816b221e0a350",
+      "options": {
+        "code": "Agent.check = function() {\n  if (this.options('make_message')) {\n    this.createMessage({ 'message': 'I made a message!' });\n    var callCount = this.memory('callCount') || 0;\n    this.memory('callCount', callCount + 1);\n  }\n};\n\nAgent.receive = function() {\n  var message = this.incomingMessage();\n  this.createMessage({ 'message': 'I got a message!', 'message_was': message.payload });\n}",
+        "expected_receive_period_in_days": "2",
+        "expected_update_period_in_days": "2",
+        "produces_unsafe_messages": true,
+        "accept_unsafe_messages": "reject"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::PostAgent",
+      "name": "Refresh Canva Tokens",
+      "disabled": false,
+      "guid": "479302f2754719d893cd0062668556ab",
+      "options": {
+        "post_url": "https://api.canva.com/rest/v1/oauth/token",
+        "method": "post",
+        "content_type": "form",
+        "payload": {
+          "grant_type": "refresh_token",
+          "refresh_token": "{% credential canva_refresh_token %}",
+          "client_id": "{% credential canva_client_id %}",
+          "client_secret": "{% credential canva_client_secret %}"
+        },
+        "headers": {
+          "Accept": "application/json"
+        },
+        "emit_messages": "true",
+        "emit_on_error": "true",
+        "no_merge": "true",
+        "output_mode": "clean",
+        "produces_unsafe_messages": false,
+        "accept_unsafe_messages": "reject"
+      },
+      "schedule": "every_30m",
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::PostAgent",
+      "name": "Upload to shopify",
+      "disabled": false,
+      "guid": "4a1969f784b51e8e22bd5f576188f8c9",
+      "options": {
+        "post_url": "https://monimalene.myshopify.com/admin/api/2025-07/products/{{ article.node.id | split: '/' | last }}/images.json",
+        "method": "post",
+        "content_type": "json",
+        "payload": {
+          "image": {
+            "src": "{{ job.job.urls[0] | default: job.urls[0] | default: payload.export_url }}",
+            "alt": "{{ article.node.title | default: 'Auto-Upload von Canva' }}",
+            "position": 1
+          }
+        },
+        "headers": {
+          "X-Shopify-Access-Token": "{% credential shopify_api_key %}",
+          "Accept": "application/json"
+        },
+        "emit_messages": "true",
+        "emit_on_error": "true",
+        "no_merge": "true",
+        "output_mode": "merge",
+        "produces_unsafe_messages": false,
+        "accept_unsafe_messages": "accept"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::PostAgent",
+      "name": "Query designs",
+      "disabled": false,
+      "guid": "4bdd7e11c0271276b1955ac4e4fc73a1",
+      "options": {
+        "post_url": "https://api.canva.com/rest/v1/designs",
+        "method": "get",
+        "content_type": "form",
+        "payload": {
+          "query": "{{ article.node.title }}",
+          "ownership": "any",
+          "sort_by": "title_ascending"
+        },
+        "headers": {
+          "Authorization": "Bearer {% credential canva_token %}",
+          "Accept": "application/json"
+        },
+        "emit_messages": "true",
+        "no_merge": "false",
+        "output_mode": "merge",
+        "produces_unsafe_messages": false,
+        "accept_unsafe_messages": "accept"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::PostAgent",
+      "name": "Artikel von Shopify holen",
+      "disabled": false,
+      "guid": "51f6be9099fd31583a5629e8ba6e3c29",
+      "options": {
+        "post_url": "https://monimalene.myshopify.com/admin/api/2025-07/graphql.json",
+        "method": "post",
+        "content_type": "json",
+        "payload": {
+          "query": "query { products(first: 100, query: \"status:active\") { edges { node { id title handle status } } } }"
+        },
+        "headers": {
+          "X-Shopify-Access-Token": "{% credential shopify_api_key %}",
+          "Accept": "application/json"
+        },
+        "emit_messages": "true",
+        "emit_on_error": "true",
+        "no_merge": "true",
+        "output_mode": "clean",
+        "message_headers_style": "capitalized",
+        "json_key_encoding": "raw",
+        "produces_unsafe_messages": false,
+        "accept_unsafe_messages": "accept"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::WebFormAgent",
+      "name": "Start",
+      "disabled": false,
+      "guid": "6229886ca1fdf14e541d051a362fdf65",
+      "options": {
+        "produces_unsafe_messages": true,
+        "accept_unsafe_messages": "reject",
+        "secret": "formsecret",
+        "form_fields": "{\n  \"secret\": \"go-all\",\n  \"form_fields\": [\n    { \"name\": \"kickoff\", \"label\": \"-\", \"type\": \"text\", \"style\": \"display:none\", \"value\": \"go\" }\n  ],\n  \"response_text\": \"🚀 Los geht’s! Der Workflow wurde gestartet.\",\n  \"custom_css\": \".form-container{max-width:520px;margin:4rem auto;padding:28px;background:#0b1220;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.25);color:#e8eefc;font-famil_\n",
+        "response_text": "Form received",
+        "custom_css": ""
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::JsonParseAgent",
+      "name": "Parse article response",
+      "disabled": false,
+      "guid": "637acb71c92e59b3fc13d8a7d751855e",
+      "options": {
+        "produces_unsafe_messages": true,
+        "accept_unsafe_messages": "accept",
+        "data_path": "body",
+        "data_key": "articles",
+        "keep_message_radio": "false",
+        "keep_message": "false"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::JsonParseAgent",
+      "name": "JsonParse 433",
+      "disabled": false,
+      "guid": "76d9a9d385b42954ffd66a733b4dc1c9",
+      "options": {
+        "produces_unsafe_messages": true,
+        "accept_unsafe_messages": "reject",
+        "data_path": "body",
+        "data_key": "images",
+        "keep_message_radio": "true",
+        "keep_message": "true"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::PostAgent",
+      "name": "Get currrent article images",
+      "disabled": false,
+      "guid": "788a6f199d4f2d7f3851efc78ca47094",
+      "options": {
+        "post_url": "https://monimalene.myshopify.com/admin/api/2025-07/products/{{ product_numeric_id | default: article.node.id | split: '/' | last }}/images.json",
+        "method": "get",
+        "headers": {
+          "X-Shopify-Access-Token": "{% credential shopify_api_key %}",
+          "Accept": "application/json"
+        },
+        "emit_messages": "true",
+        "emit_on_error": "true",
+        "no_merge": "true",
+        "output_mode": "merge",
+        "produces_unsafe_messages": false,
+        "accept_unsafe_messages": "accept"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::CredentialsAgent",
+      "name": "Store refresh token",
+      "disabled": false,
+      "guid": "790e4ddc93e27e79783ae00b3fdc9e9d",
+      "options": {
+        "produces_unsafe_messages": true,
+        "accept_unsafe_messages": "accept",
+        "credential_name": "canva_refresh_token",
+        "value_path": "credentials.refresh_token"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::JsonParseAgent",
+      "name": "Parse job data",
+      "disabled": false,
+      "guid": "7bfc445fb69dab7b1682080e05bb43fd",
+      "options": {
+        "produces_unsafe_messages": false,
+        "accept_unsafe_messages": "accept",
+        "data_path": "body",
+        "data_key": "job",
+        "keep_message_radio": "true",
+        "keep_message": "true"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::WebhookAgent",
+      "name": "Receive auth code",
+      "disabled": true,
+      "guid": "8a90c5967a8beb382c20c13feae19003",
+      "options": {
+        "secret": "auth",
+        "verbs": "get",
+        "expected_receive_period_in_days": 1,
+        "produces_unsafe_messages": false,
+        "accept_unsafe_messages": "reject"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::JsonParseAgent",
+      "name": "Parse design data",
+      "disabled": false,
+      "guid": "9a615628c2b9bae523b6a3f1e6721417",
+      "options": {
+        "produces_unsafe_messages": false,
+        "accept_unsafe_messages": "reject",
+        "data_path": "body",
+        "data_key": "design",
+        "keep_message_radio": "true",
+        "keep_message": "true"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::PostAgent",
+      "name": "Preflight check download",
+      "disabled": false,
+      "guid": "9d0c52f2303fb87fa9017b9f6c9f3d75",
+      "options": {
+        "post_url": "{{ job.job.urls[0] | default: job.urls[0] | default: payload.export_url }}",
+        "method": "get",
+        "headers": {
+          "Accept": "image/*"
+        },
+        "emit_messages": "true",
+        "emit_on_error": "true",
+        "no_merge": "true",
+        "output_mode": "merge",
+        "produces_unsafe_messages": false,
+        "accept_unsafe_messages": "accept"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::JsonSplitAgent",
+      "name": "Emit single articles",
+      "disabled": false,
+      "guid": "a82d4561022dbb5ac4d50cc9820f35c2",
+      "options": {
+        "produces_unsafe_messages": true,
+        "accept_unsafe_messages": "accept",
+        "data_path": "articles.data.products.edges",
+        "data_key": "article",
+        "keep_message_radio": "false",
+        "keep_message": "false"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::PostAgent",
+      "name": "Exchange Token",
+      "disabled": true,
+      "guid": "f3803b13ef3b64d2fd4ff6f2c21c4db0",
+      "options": {
+        "post_url": "https://api.canva.com/rest/v1/oauth/token",
+        "method": "post",
+        "content_type": "form",
+        "payload": {
+          "grant_type": "authorization_code",
+          "code": "{% credential canva_code %}",
+          "code_verifier": "{% credential canva_code_verifier %}",
+          "redirect_uri": "https://workflow.42grad.gmbh/users/3/web_requests/742/auth",
+          "client_id": "{% credential canva_client_id %}",
+          "client_secret": "{% credential canva_client_secret %}"
+        },
+        "headers": {
+          "Accept": "application/json"
+        },
+        "emit_messages": "true",
+        "emit_on_error": "true",
+        "no_merge": "true",
+        "output_mode": "clean",
+        "produces_unsafe_messages": false,
+        "accept_unsafe_messages": "reject"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::JsonParseAgent",
+      "name": "Parse Final Data",
+      "disabled": false,
+      "guid": "f8fff2de473e3e89c2307720bd95741f",
+      "options": {
+        "produces_unsafe_messages": true,
+        "accept_unsafe_messages": "reject",
+        "data_path": "body",
+        "data_key": "job",
+        "keep_message_radio": "true",
+        "keep_message": "true"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::PostAgent",
+      "name": "Poll export status",
+      "disabled": false,
+      "guid": "fc226301d0cafa9fc8923940e60af55d",
+      "options": {
+        "post_url": "https://api.canva.com/rest/v1/exports/{{job.job.id}}",
+        "method": "get",
+        "content_type": "json",
+        "headers": {
+          "Authorization": "Bearer {% credential canva_token %}",
+          "Accept": "application/json"
+        },
+        "emit_messages": "true",
+        "emit_on_error": "true",
+        "no_merge": "true",
+        "output_mode": "merge",
+        "produces_unsafe_messages": false,
+        "accept_unsafe_messages": "accept"
+      },
+      "keep_messages_for": 0
+    },
+    {
+      "type": "Agents::JsonParseAgent",
+      "name": "Parse token response",
+      "disabled": false,
+      "guid": "fee63c52d76259c8c686010dff8609d7",
+      "options": {
+        "produces_unsafe_messages": false,
+        "accept_unsafe_messages": "reject",
+        "data_path": "body",
+        "data_key": "credentials",
+        "keep_message_radio": "false",
+        "keep_message": "false"
+      },
+      "keep_messages_for": 0
+    }
+  ],
+  "links": [
+    {
+      "source": 3,
+      "receiver": 14
+    },
+    {
+      "source": 4,
+      "receiver": 16
+    },
+    {
+      "source": 5,
+      "receiver": 22
+    },
+    {
+      "source": 6,
+      "receiver": 12
+    },
+    {
+      "source": 7,
+      "receiver": 4
+    },
+    {
+      "source": 8,
+      "receiver": 10
+    },
+    {
+      "source": 9,
+      "receiver": 8
+    },
+    {
+      "source": 10,
+      "receiver": 18
+    },
+    {
+      "source": 11,
+      "receiver": 2
+    },
+    {
+      "source": 12,
+      "receiver": 11
+    },
+    {
+      "source": 14,
+      "receiver": 21
+    },
+    {
+      "source": 16,
+      "receiver": 3
+    },
+    {
+      "source": 17,
+      "receiver": 6
+    },
+    {
+      "source": 18,
+      "receiver": 7
+    },
+    {
+      "source": 20,
+      "receiver": 17
+    },
+    {
+      "source": 21,
+      "receiver": 20
+    },
+    {
+      "source": 22,
+      "receiver": 13
+    },
+    {
+      "source": 22,
+      "receiver": 1
+    }
+  ],
+  "control_links": []
+}
